@@ -1,0 +1,12 @@
+#stock1 {
+    display: flex;
+}
+
+.stock-data {
+    flex: 2;
+}
+
+#myChart {
+    flex: 1;
+    width: 80%;
+}
