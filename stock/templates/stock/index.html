@@ -1,8 +1,12 @@
 {% extends "stock/layout.html" %}
 
 {% block body %}
-    <div id="stock1">
-        <canvas id="myChart"></canvas>
+    <div id="search">
+        <input type="text" id="seachbar">
+        <input type="submit" value="Search" onclick="search(event)">
+    </div>
+    <div id="stock" style="display: none;">
+        <canvas id="live"></canvas>
         <table class="stock-data">
             <tr>
                 <td>Stock name</td>
@@ -17,5 +21,9 @@
                 <td>Other information here...</td>
             </tr>
         </table>
+        <input>
+        <canvas id="historyD" style="display: none;" data-res="D"></canvas>
+        <canvas id="historyM" style="display: none;" data-res="W"></canvas>
+        <canvas id="historyY" style="display: none;" data-res="M"></canvas>
     </div>
 {% endblock %}

@@ -1,0 +1,3 @@
+pip install finnhub-python
+python
+django

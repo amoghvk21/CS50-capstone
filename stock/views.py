@@ -4,6 +4,9 @@ from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.urls import reverse
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
+import finnhub
+import math
+import time
 
 # Create your views here.
 def index(request):
@@ -60,3 +63,14 @@ def register(request):
         return HttpResponseRedirect(reverse("index"))
     else:
         return render(request, "stock/register.html")
+
+
+def getData(request, symbol, resolution):
+    finnhub_client = finnhub.Client(api_key="c5u73miad3ic40rk8qt0")
+    #print(finnhub_client.stock_candles(symbol, resolution, 0, math.floor(time.time())))
+
+    return JsonResponse(finnhub_client.stock_candles(symbol, resolution, 0, math.floor(time.time())))
+
+
+def getStockPrice(request, symbol):
+    return JsonResponse()

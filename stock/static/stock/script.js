@@ -1,4 +1,7 @@
 //const Chart = require('chart.js')
+var data_;
+
+
 function makeid(length) {
     var result           = '';
     var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -10,8 +13,75 @@ function makeid(length) {
    return result;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function getData(symbol_) {
+    const socket = new WebSocket('wss://ws.finnhub.io?token=c5u73miad3ic40rk8qt0');
+
+    // Connection opened -> Subscribe
+    socket.addEventListener('open', function (event) {
+        socket.send(JSON.stringify({'type':'subscribe', 'symbol': symbol_}))
+        socket.send(JSON.stringify({'type':'subscribe', 'symbol': 'BINANCE:BTCUSDT'}))
+        socket.send(JSON.stringify({'type':'subscribe', 'symbol': 'IC MARKETS:1'}))
+    });
+    
+    // Listen for messages
+    socket.addEventListener('message', function (event) {
+        //console.log('Message from server ', event.data);
+        response = JSON.parse(event.data);
+        data_ = response.data[0].p;
+        //unsubscribe("APPL");
+    });    
+
+    return data_;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var unsubscribe = function(symbol) {
+    socket.send(JSON.stringify({'type':'unsubscribe','symbol': symbol}))
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function changeData(chart, label, data) {
+    chart.data.labels.push(label);
+    chart.data.datasets.forEach((dataset) => {
+        dataset.data.push(data);
+    });
+    chart.update();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function UNIXToDate(unix) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    let seconds = unix * 1000;
+    let date = new Date(seconds);
+    let month = months[date.getMonth()];
+    let date_ = date.getDate();
+    
+    return `${date_} ${month}`;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////// END OF FUNCTION DECLARATION ////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 document.addEventListener('DOMContentLoaded', function() {
 
+
+    // Search function for searching for a stock to display
+    function search(event) {
+        
+        
+
+        return false;
+    }
+
+    // Event listener for the <input type=""> so display the correct graph
+
+    // Live
     const labels = [
         'January',
         'February',
@@ -37,26 +107,25 @@ document.addEventListener('DOMContentLoaded', function() {
         options: {}
     };
 
-    const myChart = new Chart(
-        document.getElementById('myChart'),
+    const live = new Chart(
+        document.getElementById('live'),
         config 
     );
 
-    function changeData(chart, label, data) {
-            chart.data.labels.push(label);
-            chart.data.datasets.forEach((dataset) => {
-                dataset.data.push(data);
-            });
-            chart.update();
-    }
+    console.log(UNIXToDate(1635800653));
 
     setInterval(function() {
-        changeData(myChart, makeid(4), Math.floor(Math.random()*50));
+        changeData(live, makeid(4), getData("APPL"));
+        unsubscribe("APPL");
     }, 2000);
-    
 
-    //myChart.canvas.parentNode.style.height = '128px';
-    myChart.canvas.parentNode.style.width = '1600px';
+
+
+
+    // History
+
+
+
 
 })
 

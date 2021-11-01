@@ -26,7 +26,7 @@ class Follow(models.Model):
     return f'{self.user} follows {self.follows}'
 
 class Transaction(models.Model):
-  user = models.ForeignKey(User, blank=False. related_name="user", on_delete=models.DO_NOTHING)
+  user = models.ForeignKey(User, blank=False, related_name="user", on_delete=models.DO_NOTHING)
   stock = models.CharField(max_length=5)
   shares = models.IntegerField()
   boughtFor = models.DecimalField(max_digits=100, decimal_places=2, blank=False)
