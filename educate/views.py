@@ -3,4 +3,4 @@ from django.shortcuts import render
 
 # Testing view
 def index(request):
-    return HttpResponse("hello, world!")
+    return render(request, "capstone/index.html")
