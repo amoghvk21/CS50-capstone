@@ -1,6 +1,8 @@
 //const Chart = require('chart.js')
 var data_;
+var stock;
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function makeid(length) {
     var result           = '';
@@ -30,7 +32,10 @@ function getData(symbol_) {
         //console.log('Message from server ', event.data);
         response = JSON.parse(event.data);
         data_ = response.data[0].p;
-        //unsubscribe("APPL");
+        var unsubscribe = function(symbol) {
+            socket.send(JSON.stringify({'type':'unsubscribe','symbol': symbol}))
+        }
+        unsubscribe(socket, symbol_);
     });    
 
     return data_;
@@ -38,7 +43,7 @@ function getData(symbol_) {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-var unsubscribe = function(symbol) {
+var unsubscribe = function(socket, symbol) {
     socket.send(JSON.stringify({'type':'unsubscribe','symbol': symbol}))
 }
 
@@ -64,6 +69,50 @@ function UNIXToDate(unix) {
     return `${date_} ${month}`;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+function getStockPrice() {
+    const socket = new WebSocket('wss://ws.finnhub.io?token=c5u73miad3ic40rk8qt0');
+
+    // Connection opened -> Subscribe
+    socket.addEventListener('open', function (event) {
+        socket.send(JSON.stringify({'type':'subscribe', 'symbol': 'AAPL'}))
+        socket.send(JSON.stringify({'type':'subscribe', 'symbol': 'BINANCE:BTCUSDT'}))
+        socket.send(JSON.stringify({'type':'subscribe', 'symbol': 'IC MARKETS:1'}))
+    });
+
+    // Listen for messages
+    socket.addEventListener('message', function (event) {
+        console.log('Message from server ', event.data);
+    });
+
+    // Unsubscribe
+    var unsubscribe = function(symbol) {
+        socket.send(JSON.stringify({'type':'unsubscribe','symbol': symbol}))
+    }
+
+}
+*/
+
+function getStockPriceOld(symbol) {
+    let result = '';
+    fetch(`https://financialmodelingprep.com/api/v3/quote-short/${symbol}?apikey=c3e3876171acb40b35d888cec33b344b`, {
+        method: 'GET',
+    })
+    .then(response => response.json())
+    .then(result => {
+        console.log(result)
+    });
+}
+
+async function getStockPrice(symbol) {
+    let response = await fetch(`https://financialmodelingprep.com/api/v3/quote-short/${symbol}?apikey=c3e3876171acb40b35d888cec33b344b`);
+    let data = await response.json();
+    return await data;
+}
+
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////// END OF FUNCTION DECLARATION ////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -71,11 +120,13 @@ function UNIXToDate(unix) {
 document.addEventListener('DOMContentLoaded', function() {
 
 
-    // Search function for searching for a stock to display
-    function search(event) {
-        
-        
-
+    // Search function for searching for a stock to display declared above
+    function search() {
+        console.log("search function");
+        document.querySelector("#search").style.display = "none";
+        document.querySelector("#stock").style.display = "block";
+        stock = document.querySelector("#searchbar").value;
+        console.log(stock);
         return false;
     }
 
@@ -94,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const data = {
         labels: labels,
         datasets: [{
-            label: 'My First dataset',
+            label: 'Live data',
             backgroundColor: 'rgb(255, 99, 132)',
             borderColor: 'rgb(255, 99, 132)',
             data: [0, 10, 5, 2, 20, 30],
@@ -112,11 +163,9 @@ document.addEventListener('DOMContentLoaded', function() {
         config 
     );
 
-    console.log(UNIXToDate(1635800653));
-
     setInterval(function() {
-        changeData(live, makeid(4), getData("APPL"));
-        unsubscribe("APPL");
+        temp =  await getStockPrice(stock)
+        changeData(live, makeid(4), x[0].price);
     }, 2000);
 
 
@@ -128,6 +177,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 })
+
+
+
+
+
+
+
+
+
 
 /*
 const ctx = document.getElementById('myChart').getContext('2d');

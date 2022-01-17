@@ -2,8 +2,8 @@
 
 {% block body %}
     <div id="search">
-        <input type="text" id="seachbar">
-        <input type="submit" value="Search" onclick="search(event)">
+        <input type="text" id="searchbar">
+        <input type="submit" value="Search" onclick="search">
     </div>
     <div id="stock" style="display: none;">
         <canvas id="live"></canvas>
@@ -21,8 +21,7 @@
                 <td>Other information here...</td>
             </tr>
         </table>
-        <input>
-        <canvas id="historyD" style="display: none;" data-res="D"></canvas>
+        <canvas id="historyD" style="display: block;" data-res="D"></canvas>
         <canvas id="historyM" style="display: none;" data-res="W"></canvas>
         <canvas id="historyY" style="display: none;" data-res="M"></canvas>
     </div>
