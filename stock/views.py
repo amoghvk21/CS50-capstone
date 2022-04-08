@@ -1,4 +1,9 @@
+from ast import excepthandler
+from decimal import Decimal
+from traceback import print_exception
 from django.shortcuts import render
+
+import stock
 from .models import *
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, response
 from django.urls import reverse
@@ -11,6 +16,12 @@ import requests
 import json
 import yfinance as yf
 import websocket
+from django.views.decorators.csrf import csrf_exempt
+import datetime as dt
+from .models import User, Watchlist, Transaction
+from django.core import serializers
+from django.http import HttpResponse
+
 
 # Create your views here.
 def index(request):
@@ -69,73 +80,120 @@ def register(request):
         return render(request, "stock/register.html")
 
 
-def getData(request, symbol, resolution):
-    finnhub_client = finnhub.Client(api_key="c5u73miad3ic40rk8qt0")
-    #print(finnhub_client.stock_candles(symbol, resolution, 0, math.floor(time.time())))
 
-    return JsonResponse(finnhub_client.stock_candles(symbol, resolution, 0, math.floor(time.time())))
+################################   API   #########################
 
 
+
+# Gets live stock price
 def getStockPrice(request, symbol):
+    return None
     symbol = symbol.capitalize()
-    
     return JsonResponse(f"https://financialmodelingprep.com/api/v3/quote-short/{symbol}?apikey=c3e3876171acb40b35d888cec33b344b", safe=False)
 
 
-###########################################################################################
+#Gets history using new API
+@csrf_exempt
+def history(request, symbol, resolution):
+    return None
+    if resolution == "W":
+        response = requests.get(f"https://api.twelvedata.com/time_series?apikey=bdbac10be4224eb19b2fbb404c130b1e&interval=1day&symbol={symbol}&outputsize=151&start_date=2021-12-21 17:03:00&end_date=2022-02-21 17:03:00&format=JSON")
+        return JsonResponse(response.text, safe=False)
 
 
+#Gets history using old API
+@csrf_exempt
+def getData(request, symbol, resolution):
 
-'''
-def stockPrice(request, symbol):
-    url = "https://finnhub-realtime-stock-price.p.rapidapi.com/quote"
-    querystring = {"symbol":"AAPL"}
-    headers = {
-        'x-rapidapi-key': "c5u73miad3ic40rk8qt0",
-        'x-rapidapi-host': "finnhub-realtime-stock-price.p.rapidapi.com"
-        }
-    response = requests.request("GET", url, headers=headers, params=querystring)
-    return JsonResponse(response.text, safe=False)
-
-
-def stockPrice(symbol):
-    symbol = symbol.capitalize()
-    base_url = 'https://finnhub.io/api/v1/stock/price-target?'
-    r = requests.get(base_url, params = {'symbol': symbol, 'token':"c5u73miad3ic40rk8qt0"})
-    text = r.text
-    company_price_target = json.loads(text)
-    return company_price_target
-
-'''
+    if resolution == "D":
+        finnhub_client1 = finnhub.Client(api_key="c5u73miad3ic40rk8qt0")
+        end_date = dt.datetime.now()
+        start_date = end_date - dt.timedelta(days=1)
+        end = int(end_date.timestamp())
+        start = int(start_date.timestamp())
+        return JsonResponse(finnhub_client1.stock_candles(symbol, 1, start, end))
+    elif resolution == "Y":
+        finnhub_client2 = finnhub.Client(api_key="c5u73miad3ic40rk8qt0")
+        end_date = dt.datetime.now()
+        start_date = end_date - dt.timedelta(days=365)
+        end = int(end_date.timestamp())
+        start = int(start_date.timestamp())
+        return JsonResponse(finnhub_client2.stock_candles(symbol, "D", start, end))
 
 
-'''
-def getStockPrice(request, symbol):
-    return HttpResponse("hello, world!")
+def openTransaction(request, stock):
+    print("this is the stock: ", stock)
+    if Transaction.objects.get(user=request.user.id, stock=stock, closed=False):
+        x = {True}
+    else:
+        x = {}
+    return JsonResponse(f"{x}", safe=False)
 
-def stockPrice(request, symbol):
+@csrf_exempt
+def buyStock(request):
 
-    def on_message(ws, message):
-        print(message)
+    data = json.loads(request.body.decode('utf-8'))
+    stock = data["stock"]
+    price = data["price"]
+    amount = data["amount"]
+    
+    # Gets the balance of the user
+    u = User.objects.get(id=request.user.id)
+    balance = u.balance
 
-    def on_error(ws, error):
-        print(error)
+    # Checks if there is enough money in the users account
+    if Decimal(balance) >= (Decimal(price)*Decimal(amount)):
+        t = Transaction(
+            user = request.user,
+            stock = stock,
+            shares = int(amount),
+            boughtFor = price,
+            soldFor = 0.00,
+            closed = False
+        )
+        t.save()
 
-    def on_close(ws):
-        print("### closed ###")
+        # Change the balance of the user
+        u = User.objects.get(id=request.user.id)
+        u.balance = Decimal(balance)-(Decimal(price)*Decimal(amount))
+        u.save()
+        return JsonResponse('success', safe=False)
+    else:
+        return JsonResponse('error, not enough money', safe=False)
 
-    def on_open(ws):
-        ws.send('{"type":"subscribe","symbol":"AAPL"}')
-        ws.send('{"type":"subscribe","symbol":"AMZN"}')
-        ws.send('{"type":"subscribe","symbol":"BINANCE:BTCUSDT"}')
-        ws.send('{"type":"subscribe","symbol":"IC MARKETS:1"}')
 
-    websocket.enableTrace(True)
-    ws = websocket.WebSocketApp("wss://ws.finnhub.io?token=c5u73miad3ic40rk8qt0",
-                              on_message = on_message,
-                              on_error = on_error,
-                              on_close = on_close)
-    ws.on_open = on_open
-    return JsonResponse(json.loads(ws.run_forever()), safe=False)
+def deleteTransaction(request, id):
+    try:
+        t = Transaction.objects.get(id=id)
+        t.delete()
+        return HttpResponse("Success")
+    except:
+        return HttpResponse("Error")
+    
 
-'''
+def changeBalance(request, new_balance):
+    try:
+        u = User.objects.get(id=request.user.id)
+        u.balance = new_balance
+        u.save()
+        return HttpResponse("success")
+    except:
+        return HttpResponse("error")
+
+
+def portfolio(request):
+    return render(request, "stock/portfolio.html")
+
+
+def allTransactions(request):
+
+    balance = User.objects.get(pk=request.user.id).balance
+    transactions = Transaction.objects.filter(user=request.user.id, closed=False)
+    d = {}
+    i = 0
+    for t in transactions:
+        d[i] = {"stock": t.stock, "shares": t.shares}
+        i += 1
+
+    print(d)
+    return JsonResponse(d)

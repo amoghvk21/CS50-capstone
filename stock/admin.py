@@ -3,6 +3,5 @@ from .models import *
 
 # Register your models here.
 admin.site.register(User)
-admin.site.register(Stock)
-admin.site.register(Data)
-admin.site.register(Follow)
+admin.site.register(Watchlist)
+admin.site.register(Transaction)

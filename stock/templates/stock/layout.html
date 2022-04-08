@@ -10,7 +10,7 @@
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     </head>
     <body>
-        <script src="{% static 'stock/script.js/' %}"></script>
+        <script src="\static\stock\script.js"></script>
 
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
             <a class="navbar-brand" href="#">Stock</a>
@@ -23,11 +23,14 @@
                     </li>
                 {% endif %}
                 <li class="nav-item">
-                  <a class="nav-link" href="">All Posts</a>
+                  <a class="nav-link" href="">Search</a>
                 </li>
                 {% if user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="">Following</a>
+                        <a class="nav-link" href="">Watchlist</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'portfolio' %}">Portfolio</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'logout' %}">Log Out</a>

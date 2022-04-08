@@ -1,65 +1,46 @@
-//const Chart = require('chart.js')
 var data_;
 var stock;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-function makeid(length) {
-    var result           = '';
-    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    var charactersLength = characters.length;
-    for ( var i = 0; i < length; i++ ) {
-      result += characters.charAt(Math.floor(Math.random() * 
- charactersLength));
-   }
-   return result;
+async function getStockPrice(symbol) {
+    let response = await fetch(`https://financialmodelingprep.com/api/v3/quote-short/${symbol}?apikey=c3e3876171acb40b35d888cec33b344b`);
+    let data = await response.json();
+    return await data;
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function getData(symbol_) {
-    const socket = new WebSocket('wss://ws.finnhub.io?token=c5u73miad3ic40rk8qt0');
+function search(event) {
 
-    // Connection opened -> Subscribe
-    socket.addEventListener('open', function (event) {
-        socket.send(JSON.stringify({'type':'subscribe', 'symbol': symbol_}))
-        socket.send(JSON.stringify({'type':'subscribe', 'symbol': 'BINANCE:BTCUSDT'}))
-        socket.send(JSON.stringify({'type':'subscribe', 'symbol': 'IC MARKETS:1'}))
-    });
+    stock = document.querySelector("#searchbar").value;
+    getStockPrice(stock).then(response => {
+        if (response.toString() !== '') {
+
+            document.querySelector("#search").style.display = "none";
+            document.querySelector("#stock").style.display = "block";
+            document.querySelector("#stock-name").style.display = "block";
+            document.querySelector('#stock-name').innerHTML = stock;
+            document.querySelector('#index-header').style.display = "none";
+            createChart(stock)
     
-    // Listen for messages
-    socket.addEventListener('message', function (event) {
-        //console.log('Message from server ', event.data);
-        response = JSON.parse(event.data);
-        data_ = response.data[0].p;
-        var unsubscribe = function(symbol) {
-            socket.send(JSON.stringify({'type':'unsubscribe','symbol': symbol}))
+        } else {
+            alert(`"${stock}" doesn't exist. Please try again`);
         }
-        unsubscribe(socket, symbol_);
-    });    
-
-    return data_;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-var unsubscribe = function(socket, symbol) {
-    socket.send(JSON.stringify({'type':'unsubscribe','symbol': symbol}))
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-function changeData(chart, label, data) {
-    chart.data.labels.push(label);
-    chart.data.datasets.forEach((dataset) => {
-        dataset.data.push(data);
     });
-    chart.update();
+
+    // Code that update the current price at the top of the search page. Runs once then every minute
+    changeLivePrice(stock);
+    setInterval(changeLivePrice(stock), 60000);
+
+    // SHowing the correct sell information
+    updateSellInformation(stock);
+
+    return false;
+
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function UNIXToDate(unix) {
+function UNIXToDate_(unix) {
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     let seconds = unix * 1000;
     let date = new Date(seconds);
@@ -69,158 +50,200 @@ function UNIXToDate(unix) {
     return `${date_} ${month}`;
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function UNIXToDate(unixTimestamp) {
+    const milliseconds = unixTimestamp * 1000
+    const dateObject = new Date(milliseconds);
+    const humanDateFormat = dateObject.toLocaleString()
+    return humanDateFormat;
+}
 
-/*
-function getStockPrice() {
-    const socket = new WebSocket('wss://ws.finnhub.io?token=c5u73miad3ic40rk8qt0');
+function createChart(stock) {
+    stock = document.querySelector("#searchbar").value;
 
-    // Connection opened -> Subscribe
-    socket.addEventListener('open', function (event) {
-        socket.send(JSON.stringify({'type':'subscribe', 'symbol': 'AAPL'}))
-        socket.send(JSON.stringify({'type':'subscribe', 'symbol': 'BINANCE:BTCUSDT'}))
-        socket.send(JSON.stringify({'type':'subscribe', 'symbol': 'IC MARKETS:1'}))
+    // History for the last year
+    let labels = [];
+    fetch(`/history/${stock}/Y`, {
+        method: 'POST',
+    })
+    .then(response => response.json())
+    .then(result => {
+        labels = result["t"]
+        i = 0
+        labels.forEach(element => {
+            labels[i] = UNIXToDate(element)
+            i++
+        });
+        const data = {
+            labels: labels,
+            datasets: [{
+                label: 'History Every Week for the last Year',
+                backgroundColor: 'rgb(255, 99, 132)',
+                borderColor: 'rgb(255, 99, 132)',
+                data: result['c'],
+            }]
+        };
+    
+        const config = {
+            type: 'line',
+            data: data,
+            options: {}
+        };
+    
+        const live = new Chart(
+            document.getElementById('historyYear'),
+            config 
+        );
     });
 
-    // Listen for messages
-    socket.addEventListener('message', function (event) {
-        console.log('Message from server ', event.data);
+    // History every minute for today
+    labels = [];
+    fetch(`/history/${stock}/D`, {
+        method: 'POST',
+    })
+    .then(response => response.json())
+    .then(result => {
+        labels = result["t"]
+        i = 0
+        labels.forEach(element => {
+            labels[i] = UNIXToDate(element)
+            i++
+        });
+        const data = {
+            labels: labels,
+            datasets: [{
+                label: 'History Every Minute for today',
+                backgroundColor: 'rgb(255, 99, 132)',
+                borderColor: 'rgb(255, 99, 132)',
+                data: result['c'],
+            }]
+        };
+    
+        const config = {
+            type: 'line',
+            data: data,
+            options: {}
+        };
+    
+        const live = new Chart(
+            document.getElementById('historyDay'),
+            config 
+        );
     });
-
-    // Unsubscribe
-    var unsubscribe = function(symbol) {
-        socket.send(JSON.stringify({'type':'unsubscribe','symbol': symbol}))
-    }
 
 }
-*/
 
-function getStockPriceOld(symbol) {
-    let result = '';
-    fetch(`https://financialmodelingprep.com/api/v3/quote-short/${symbol}?apikey=c3e3876171acb40b35d888cec33b344b`, {
+function sell(event) {
+    price = document.querySelector("#current-price");
+    console.log("sell stock...");
+    updateSellInformation();
+    return false;
+}
+
+function buy(event) {
+    amount = document.querySelector("#amount").value;
+    currentPrice = document.querySelector('#current-price').innerHTML;
+    stock = document.querySelector('#stock-name').innerHTML;
+    console.log("buy stock...");
+    fetch(`/buyStock`, {
+        method: 'POST',
+        body: JSON.stringify({
+            stock: stock,
+            price: currentPrice,
+            amount: amount
+        })
+    })
+    .then(response => response.json())
+    .then(result => alert(result))
+
+    // Show and refresh sell box information
+    updateSellInformation(stock);
+    return false;
+}
+
+function changeLivePrice(stock) {
+    getStockPrice(stock).then(response => {
+        let old = document.querySelector("#current-price").innerHTML;
+        let new_ = response[0]["price"];
+        document.querySelector("#current-price").innerHTML = new_;
+        if (old > new_) {
+            document.querySelector("#current-price").style.color = "red";
+        } else {
+            document.querySelector("#current-price").style.color = "green";
+        }
+    })
+}
+
+
+function updateSellInformation(stock) {
+    console.log(`this is the stock: ${stock}`)
+    fetch(`/openTransaction/${stock}`, {
         method: 'GET',
     })
     .then(response => response.json())
     .then(result => {
-        console.log(result)
+        console.log(result.toString());
+        if (result.toString() !== '{}') {
+            document.querySelector("#openTransaction").style.display = "block";
+
+            let shares_bought = 0
+            let current_profit = 0
+
+            document.querySelector("#shares-bought").innerHTML = shares_bought;
+            document.querySelector("#current-profit").innerHTML = current_profit;            
+        }
     });
+
 }
 
-async function getStockPrice(symbol) {
-    let response = await fetch(`https://financialmodelingprep.com/api/v3/quote-short/${symbol}?apikey=c3e3876171acb40b35d888cec33b344b`);
-    let data = await response.json();
-    return await data;
-}
 
+function portfolio() {
+
+
+    fetch(`/allTransactions`, {
+        method: 'GET',
+    })
+    .then(response => response.json())
+    .then(result => {
+        console.log(result);
+    });
+
+    const data = {
+        labels: [
+            'AAPL',
+            'GOOGL',
+            'STOCK3'
+        ],
+        datasets: [{
+            label: 'Stock portfolio',
+            data: [300, 50, 100],
+            backgroundColor: [
+                'rgb(255, 99, 132)',
+                'rgb(54, 162, 235)',
+                'rgb(255, 205, 86)'
+            ],
+            hoverOffset: 4,
+            maintainAspectRatio: false
+        }]
+    };
+
+    const config = {
+        type: 'doughnut',
+        data: data,
+    };
+
+    const live = new Chart(
+        document.getElementById('portfolio'),
+        config 
+    );
+
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////// END OF FUNCTION DECLARATION ////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 document.addEventListener('DOMContentLoaded', function() {
-
-
-    // Search function for searching for a stock to display declared above
-    function search() {
-        console.log("search function");
-        document.querySelector("#search").style.display = "none";
-        document.querySelector("#stock").style.display = "block";
-        stock = document.querySelector("#searchbar").value;
-        console.log(stock);
-        return false;
+    if (document.querySelector("h1").innerHTML === "Portfolio") {
+        portfolio();
     }
-
-    // Event listener for the <input type=""> so display the correct graph
-
-    // Live
-    const labels = [
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June'
-    ];
-
-    const data = {
-        labels: labels,
-        datasets: [{
-            label: 'Live data',
-            backgroundColor: 'rgb(255, 99, 132)',
-            borderColor: 'rgb(255, 99, 132)',
-            data: [0, 10, 5, 2, 20, 30],
-        }]
-    };
-
-    const config = {
-        type: 'line',
-        data: data,
-        options: {}
-    };
-
-    const live = new Chart(
-        document.getElementById('live'),
-        config 
-    );
-
-    setInterval(function() {
-        temp =  await getStockPrice(stock)
-        changeData(live, makeid(4), x[0].price);
-    }, 2000);
-
-
-
-
-    // History
-
-
-
-
 })
-
-
-
-
-
-
-
-
-
-
-/*
-const ctx = document.getElementById('myChart').getContext('2d');
-const myChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-        datasets: [{
-            label: '# of Votes',
-            data: [12, 19, 3, 5, 2, 3],
-            backgroundColor: [
-                'rgba(255, 99, 132, 0.2)',
-                'rgba(54, 162, 235, 0.2)',
-                'rgba(255, 206, 86, 0.2)',
-                'rgba(75, 192, 192, 0.2)',
-                'rgba(153, 102, 255, 0.2)',
-                'rgba(255, 159, 64, 0.2)'
-            ],
-            borderColor: [
-                'rgba(255, 99, 132, 1)',
-                'rgba(54, 162, 235, 1)',
-                'rgba(255, 206, 86, 1)',
-                'rgba(75, 192, 192, 1)',
-                'rgba(153, 102, 255, 1)',
-                'rgba(255, 159, 64, 1)'
-            ],
-            borderWidth: 1
-        }]
-    },
-    options: {
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
-    }
-});
-*/

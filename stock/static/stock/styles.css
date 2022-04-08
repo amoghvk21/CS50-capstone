@@ -1,12 +1,45 @@
-#stock1 {
+#stock {
     display: flex;
 }
 
-.stock-data {
-    flex: 2;
+#stock-data {
+    text-align: center;
 }
 
-#myChart {
-    flex: 1;
-    width: 80%;
+#stock-name {
+    text-align: center;
+}
+#index-header {
+    margin-top: 10%;
+    text-align: center;
+}
+
+#search {
+    text-align: center;
+}
+
+#current-price {
+    display: inline;
+}
+
+#shares-bought {
+    display: inline;
+}
+
+#current-profit {
+    display: inline;
+}
+
+#historyYear {
+    float: left;
+    width: 50%;
+}
+
+#historyDay {
+    float: left;
+    width: 50%;
+}
+
+#portfolio {
+    width: 10%;
 }
