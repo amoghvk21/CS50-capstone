@@ -10,11 +10,11 @@ urlpatterns = [
 
     # API Routes
     path("history/<str:symbol>/<str:resolution>", views.getData, name="getData"),
-    path("history1/<str:symbol>/<str:resolution>", views.history, name="history1"),
-    path("getStockPrice/<str:symbol>", views.getStockPrice, name="getStockPrice"),
-    path("openTransaction/<str:stock>", views.openTransaction, name="openTransactions"),
+    path("allTransactionsStock/<str:stock>", views.allTransactionsStock, name="allTransactionsStock"),
     path("buyStock", views.buyStock, name="buyStock"),
     path("delete/<int:id>", views.deleteTransaction, name="deleteTransaction"),
     path("change/<str:new_balance>", views.changeBalance, name="changeBalance"),
-    path("allTransactions", views.allTransactions, name="allTransactions")
+    path("sellStock", views.sellStock, name="sellStock"),
+    path("allTransactions", views.allTransactions, name="allTransactions"),
+    path("deleteAll", views.deleteAll, name="deleteAll")
 ]

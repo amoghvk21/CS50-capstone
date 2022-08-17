@@ -19,15 +19,15 @@
             <div id="openTransaction" style="display: none;">
                 <form action="POST">
                     {% csrf_token %}
-                    <input type="number">
+                    <input type="number" id="sell-amount">
                     <input type="button" value="Sell" onclick="sell()">
                     <br>
                     Shares bought: <p id="shares-bought">0</p> Current profit: <p id="current-profit">0</p>
                 </form>
             </div>
         </div>
-        
-        <canvas id="historyYear" style="display: block;"></canvas>      
+
         <canvas id="historyDay" style="display: block;"></canvas>
+        <canvas id="historyYear" style="display: block;"></canvas>      
     </div>
 {% endblock %}

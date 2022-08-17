@@ -2,8 +2,11 @@
 
 {% block body %}
 
-    <h1>Portfolio</h1>
-    <p>Pie chart of current net worth</p>
-    <canvas id="portfolio"></canvas>
+    <h1 id="portfolio-title">Portfolio</h1>
+    <p id="portfolio-networth">Current net worth: $</p>
+    <p id="portfolio-information">Here is a breakdown of your net worth:</p>
+    <div id="portfolio-container">
+        <canvas id="portfolio"></canvas>
+    </div>
 
 {% endblock %}

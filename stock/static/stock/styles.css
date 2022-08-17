@@ -40,6 +40,21 @@
     width: 50%;
 }
 
-#portfolio {
-    width: 10%;
+#portfolio-title {
+    text-align: center;
+}
+
+#portfolio-networth {
+    text-align: center;
+}
+
+#portfolio-information {
+    text-align: center;
+}
+
+#portfolio-container {
+    position: absolute;
+    left: 28%;
+    width: 850px;
+    height: 850px;
 }

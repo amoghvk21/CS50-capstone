@@ -1,26 +1,15 @@
-from ast import excepthandler
 from decimal import Decimal
-from traceback import print_exception
 from django.shortcuts import render
-
-import stock
 from .models import *
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, response
 from django.urls import reverse
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
 import finnhub
-import math
-import time
 import requests
 import json
-import yfinance as yf
-import websocket
 from django.views.decorators.csrf import csrf_exempt
 import datetime as dt
-from .models import User, Watchlist, Transaction
-from django.core import serializers
-from django.http import HttpResponse
 
 
 # Create your views here.
@@ -80,26 +69,11 @@ def register(request):
         return render(request, "stock/register.html")
 
 
-
-################################   API   #########################
-
-
-
-# Gets live stock price
-def getStockPrice(request, symbol):
-    return None
-    symbol = symbol.capitalize()
-    return JsonResponse(f"https://financialmodelingprep.com/api/v3/quote-short/{symbol}?apikey=c3e3876171acb40b35d888cec33b344b", safe=False)
+def portfolio(request):
+    return render(request, "stock/portfolio.html")
 
 
-#Gets history using new API
-@csrf_exempt
-def history(request, symbol, resolution):
-    return None
-    if resolution == "W":
-        response = requests.get(f"https://api.twelvedata.com/time_series?apikey=bdbac10be4224eb19b2fbb404c130b1e&interval=1day&symbol={symbol}&outputsize=151&start_date=2021-12-21 17:03:00&end_date=2022-02-21 17:03:00&format=JSON")
-        return JsonResponse(response.text, safe=False)
-
+################################   API   ################################
 
 #Gets history using old API
 @csrf_exempt
@@ -121,14 +95,19 @@ def getData(request, symbol, resolution):
         return JsonResponse(finnhub_client2.stock_candles(symbol, "D", start, end))
 
 
-def openTransaction(request, stock):
-    print("this is the stock: ", stock)
-    if Transaction.objects.get(user=request.user.id, stock=stock, closed=False):
-        x = {True}
+# Returns list of all open transactions for that user for that stock
+def allTransactionsStock(request, stock):
+    if Transaction.objects.filter(user=request.user.id, stock=stock, closed=False).exists():
+        x = []
+        for t in Transaction.objects.filter(user=request.user.id, stock=stock, closed=False):
+            x.append(t.boughtFor)
+        return JsonResponse(x, safe=False)
     else:
         x = {}
-    return JsonResponse(f"{x}", safe=False)
+        return JsonResponse(f"{x}", safe=False)
 
+
+# API call to buy a stock and update the nescessary information
 @csrf_exempt
 def buyStock(request):
 
@@ -143,15 +122,15 @@ def buyStock(request):
 
     # Checks if there is enough money in the users account
     if Decimal(balance) >= (Decimal(price)*Decimal(amount)):
-        t = Transaction(
-            user = request.user,
-            stock = stock,
-            shares = int(amount),
-            boughtFor = price,
-            soldFor = 0.00,
-            closed = False
-        )
-        t.save()
+        for _ in range(int(amount)):
+            t = Transaction(
+                user = request.user,
+                stock = stock,
+                boughtFor = price,
+                soldFor = 0.00,
+                closed = False
+            )
+            t.save()
 
         # Change the balance of the user
         u = User.objects.get(id=request.user.id)
@@ -162,6 +141,7 @@ def buyStock(request):
         return JsonResponse('error, not enough money', safe=False)
 
 
+# Delete a certain transaction given its id
 def deleteTransaction(request, id):
     try:
         t = Transaction.objects.get(id=id)
@@ -171,6 +151,7 @@ def deleteTransaction(request, id):
         return HttpResponse("Error")
     
 
+# Change the balance of the current user to the new balance entered in as an argument
 def changeBalance(request, new_balance):
     try:
         u = User.objects.get(id=request.user.id)
@@ -181,19 +162,61 @@ def changeBalance(request, new_balance):
         return HttpResponse("error")
 
 
-def portfolio(request):
-    return render(request, "stock/portfolio.html")
+# API call to sell a stock and update the nescessary information
+@csrf_exempt
+def sellStock(request):
+
+    # Get the data
+    data = json.loads(request.body.decode('utf-8'))
+    stock = data["stock"]
+    price = data["price"]
+    amount = data["amount"]
+
+    numOpenTransactions = Transaction.objects.filter(user=request.user.id, stock=stock, closed=False).count()
+
+    if int(amount) <= numOpenTransactions:
+        openTransactions = Transaction.objects.filter(user=request.user.id, stock=stock, closed=False)
+        i = 0
+        for t in openTransactions:
+            t.closed = True
+            t.soldFor = price
+            t.save()
+            i += 1
+            if i >= int(amount):
+                break
+        u = User.objects.get(pk=request.user.id)
+        u.balance += (Decimal(price)*int(amount))
+        u.save()
+        return JsonResponse("success", safe=False)
+    else:
+        return JsonResponse("error, you cant sell more stocks than you own.", safe=False)
 
 
+# Returns JSON of all the open transactions for that user as well as their current balance (used in the portfolio page)
 def allTransactions(request):
 
     balance = User.objects.get(pk=request.user.id).balance
     transactions = Transaction.objects.filter(user=request.user.id, closed=False)
     d = {}
-    i = 0
     for t in transactions:
-        d[i] = {"stock": t.stock, "shares": t.shares}
-        i += 1
+        if d.get(t.stock) == None:
+            d[t.stock] = 1
+        else:
+            d[t.stock] += 1
+            
+    for key in d.keys():
+        price = requests.get(f"https://financialmodelingprep.com/api/v3/quote-short/{key}?apikey=c3e3876171acb40b35d888cec33b344b").json()[0]["price"]
+        d[key] = {"amount": d[key], "price": price}
+    
+    d["balance"] = {"amount": 1, "price": balance}
 
-    print(d)
     return JsonResponse(d)
+
+
+# Flush the Transaction table and deletes all the records
+def deleteAll(request):
+    try:
+        Transaction.objects.all().delete()
+        return JsonResponse("success", safe=False)
+    except:
+        return JsonResponse("error", safe=False)

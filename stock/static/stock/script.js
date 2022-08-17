@@ -1,4 +1,3 @@
-var data_;
 var stock;
 
 async function getStockPrice(symbol) {
@@ -31,24 +30,11 @@ function search(event) {
     changeLivePrice(stock);
     setInterval(changeLivePrice(stock), 60000);
 
-    // SHowing the correct sell information
-    updateSellInformation(stock);
-
     return false;
 
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-function UNIXToDate_(unix) {
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    let seconds = unix * 1000;
-    let date = new Date(seconds);
-    let month = months[date.getMonth()];
-    let date_ = date.getDate();
-    
-    return `${date_} ${month}`;
-}
 
 function UNIXToDate(unixTimestamp) {
     const milliseconds = unixTimestamp * 1000
@@ -56,6 +42,8 @@ function UNIXToDate(unixTimestamp) {
     const humanDateFormat = dateObject.toLocaleString()
     return humanDateFormat;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function createChart(stock) {
     stock = document.querySelector("#searchbar").value;
@@ -132,18 +120,39 @@ function createChart(stock) {
 
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 function sell(event) {
-    price = document.querySelector("#current-price");
-    console.log("sell stock...");
-    updateSellInformation();
+    price = document.querySelector("#current-price").innerHTML
+    amount = document.querySelector("#sell-amount").value;
+    stock = document.querySelector('#stock-name').innerHTML;
+    
+    fetch(`/sellStock`, {
+        method: 'POST',
+        body: JSON.stringify({
+            stock: stock,
+            price: price,
+            amount: amount
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        alert(result);
+
+        // Show and refresh sell box information
+        updateSellInformation(stock);
+        document.querySelector("#sell-amount").value = null;
+    })
+
     return false;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function buy(event) {
     amount = document.querySelector("#amount").value;
     currentPrice = document.querySelector('#current-price').innerHTML;
     stock = document.querySelector('#stock-name').innerHTML;
-    console.log("buy stock...");
     fetch(`/buyStock`, {
         method: 'POST',
         body: JSON.stringify({
@@ -153,12 +162,17 @@ function buy(event) {
         })
     })
     .then(response => response.json())
-    .then(result => alert(result))
+    .then(result => {
+        alert(result);
 
-    // Show and refresh sell box information
-    updateSellInformation(stock);
+        // Show and refresh sell box information
+        updateSellInformation(stock);
+        document.querySelector("#amount").value = null;
+    })
     return false;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function changeLivePrice(stock) {
     getStockPrice(stock).then(response => {
@@ -170,34 +184,47 @@ function changeLivePrice(stock) {
         } else {
             document.querySelector("#current-price").style.color = "green";
         }
+        updateSellInformation(stock);
     })
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function updateSellInformation(stock) {
-    console.log(`this is the stock: ${stock}`)
-    fetch(`/openTransaction/${stock}`, {
+    fetch(`/allTransactionsStock/${stock}`, {
         method: 'GET',
     })
     .then(response => response.json())
     .then(result => {
-        console.log(result.toString());
-        if (result.toString() !== '{}') {
+        let resultStr = result;
+        if (resultStr.toString() != '{}') {
+
             document.querySelector("#openTransaction").style.display = "block";
+            document.querySelector("#shares-bought").innerHTML = result.length;
 
-            let shares_bought = 0
-            let current_profit = 0
+            let current_price = document.querySelector("#current-price").innerHTML;
+            let current_profit = 0;
+            result.forEach(element => {
+                current_profit += current_price-element;
+            });
+            document.querySelector("#current-profit").innerHTML = `$${Math.trunc(current_profit*100)/100}`;
+            
+            // Color the current profit - positive menas green, negative means red
+            if (current_profit >= 0) {
+                document.querySelector("#current-profit").style.color = "green";
+            } else {
+                document.querySelector("#current-profit").style.color = "red";
+            }
 
-            document.querySelector("#shares-bought").innerHTML = shares_bought;
-            document.querySelector("#current-profit").innerHTML = current_profit;            
+        } else {
+            document.querySelector("#openTransaction").style.display = "none";
         }
     });
-
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function portfolio() {
-
 
     fetch(`/allTransactions`, {
         method: 'GET',
@@ -205,36 +232,60 @@ function portfolio() {
     .then(response => response.json())
     .then(result => {
         console.log(result);
+        let keys = Object.keys(result);
+        let values = [];
+        let backgroundColor = []
+        let netWorth = 0
+        keys.forEach(function(key) {
+            values.push(result[key]["price"]*result[key]["amount"]);
+            netWorth += result[key]["price"]*result[key]["amount"];
+            backgroundColor.push(`rgb(${Math.trunc(Math.random()*255)}, ${Math.trunc(Math.random()*255)}, ${Math.trunc(Math.random()*255)})`)
+        })
+
+        const data = {
+            labels: keys,
+            datasets: [{
+                label: 'Stock portfolio',
+                data: values,
+                backgroundColor: backgroundColor,
+                hoverOffset: 4,
+                maintainAspectRatio: false
+            }],
+        };
+    
+        const config = {
+            type: 'doughnut',
+            data: data,
+            options: {
+                responsive: true
+                /*maintainAspectRatio: false,
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero:true
+                        }
+                    }]
+                } */
+            }
+        };
+    
+        const live = new Chart(
+            document.getElementById('portfolio'),
+            config 
+        );
+
+        window.addEventListener('beforeprint', function(live) {
+            live.resize(100, 100);
+        });
+
+        window.addEventListener('afterprint', function(live) {
+            live.resize();
+        })
+
+    
+        netWorth = Math.trunc(netWorth*100)/100;
+        document.querySelector("#portfolio-networth").innerHTML += netWorth;
     });
-
-    const data = {
-        labels: [
-            'AAPL',
-            'GOOGL',
-            'STOCK3'
-        ],
-        datasets: [{
-            label: 'Stock portfolio',
-            data: [300, 50, 100],
-            backgroundColor: [
-                'rgb(255, 99, 132)',
-                'rgb(54, 162, 235)',
-                'rgb(255, 205, 86)'
-            ],
-            hoverOffset: 4,
-            maintainAspectRatio: false
-        }]
-    };
-
-    const config = {
-        type: 'doughnut',
-        data: data,
-    };
-
-    const live = new Chart(
-        document.getElementById('portfolio'),
-        config 
-    );
 
 }
 
